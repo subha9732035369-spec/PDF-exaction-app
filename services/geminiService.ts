@@ -2,7 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Quiz } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
 export const generateQuizFromPDF = async (pdfBase64: string, fileName: string): Promise<Quiz> => {
   const model = 'gemini-3-pro-preview';
@@ -19,17 +20,23 @@ export const generateQuizFromPDF = async (pdfBase64: string, fileName: string): 
             }
           },
           {
-            text: `Analyze the provided PDF document and extract exactly 10 high-quality multiple-choice questions (MCQs). 
-            If the PDF contains questions and answers already, convert them to this format. 
-            If it contains text content, generate meaningful questions based on the key concepts.
+            text: `Extract EVERY question from this PDF. 
             
-            Each question must have:
-            - A clear question string.
-            - Exactly 4 options.
-            - A correct answer index (0-3).
-            - A brief explanation of why the answer is correct.
+            DIRECTIONS/CONTEXT RULES:
+            - If a set of questions (e.g., Q1-Q5) shares a common text block of "Directions" or "Instructions", you MUST copy that text EXACTLY into the 'context' field for EACH question in that set.
+            - Do NOT summarize, solve, or rephrase the DI data or instructions; provide the raw text as it appears.
             
-            Generate a creative title and description for the quiz based on the PDF content.`
+            SECTION RULES:
+            - Categorize questions into sections found in the doc (e.g., 'Reasoning', 'Numerical Ability', 'Quantitative Aptitude').
+            - If no sections are explicitly mentioned, use 'General'.
+            
+            BILINGUAL RULES:
+            - If the document is bilingual (Hindi & English), preserve both languages in the 'question', 'options', and 'context' fields.
+            
+            GENERAL:
+            - Provide a detailed title.
+            - Set 'timeLimitSeconds' based on difficulty (approx 60-90s per question).
+            - Ensure EVERY single question is extracted.`
           }
         ]
       }
@@ -41,10 +48,8 @@ export const generateQuizFromPDF = async (pdfBase64: string, fileName: string): 
         properties: {
           title: { type: Type.STRING },
           description: { type: Type.STRING },
-          timeLimitSeconds: { 
-            type: Type.INTEGER, 
-            description: "Suggested time limit for the entire quiz in seconds (approx 60s per question)."
-          },
+          timeLimitSeconds: { type: Type.INTEGER },
+          sections: { type: Type.ARRAY, items: { type: Type.STRING } },
           questions: {
             type: Type.ARRAY,
             items: {
@@ -52,10 +57,9 @@ export const generateQuizFromPDF = async (pdfBase64: string, fileName: string): 
               properties: {
                 id: { type: Type.STRING },
                 question: { type: Type.STRING },
-                options: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.STRING } 
-                },
+                context: { type: Type.STRING },
+                section: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
                 correctAnswerIndex: { type: Type.INTEGER },
                 explanation: { type: Type.STRING }
               },
@@ -63,17 +67,17 @@ export const generateQuizFromPDF = async (pdfBase64: string, fileName: string): 
             }
           }
         },
-        required: ["title", "description", "questions", "timeLimitSeconds"]
+        required: ["title", "description", "questions", "timeLimitSeconds", "sections"]
       }
     }
   });
 
+  // Directly access the text property of the response
   const jsonStr = response.text.trim();
   try {
-    const quizData = JSON.parse(jsonStr) as Quiz;
-    return quizData;
+    return JSON.parse(jsonStr) as Quiz;
   } catch (error) {
-    console.error("Failed to parse JSON response from Gemini", error);
-    throw new Error("Failed to generate quiz data properly. Please try again.");
+    console.error("Gemini Response:", jsonStr);
+    throw new Error("Failed to extract questions. The PDF structure might be too complex.");
   }
 };

@@ -1,20 +1,30 @@
 
 import React from 'react';
 
+// Added size property to ButtonProps interface to fix "Property 'size' does not exist" errors
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
   children, 
   variant = 'primary', 
+  size = 'md',
   isLoading, 
   className = '', 
   ...props 
 }) => {
-  const baseStyles = "px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95";
+  // Moved padding from baseStyles to sizes map to support dynamic sizing
+  const baseStyles = "rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95";
   
+  const sizes = {
+    sm: "px-4 py-2 text-sm",
+    md: "px-6 py-2.5",
+    lg: "px-8 py-4 text-lg"
+  };
+
   const variants = {
     primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100",
     secondary: "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50",
@@ -24,7 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button 
-      className={`${baseStyles} ${variants[variant]} ${className}`}
+      className={`${baseStyles} ${sizes[size]} ${variants[variant]} ${className}`}
       disabled={isLoading || props.disabled}
       {...props}
     >
