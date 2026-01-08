@@ -1,0 +1,5 @@
+{
+  "name": "Copy of QuizGenius PDF",
+  "description": "Transform your PDF study materials into interactive, time-based multiple-choice quizzes using AI. Upload a document, let Gemini extract the core concepts, and challenge yourself with a custom-generated exam.",
+  "requestFramePermissions": []
+}
